@@ -575,7 +575,10 @@ Viewed as the latter, then linear mixed models under a Gaussian error assumption
 
 In the geo-spatial literature, geo-located measurements are typically assumed to be sampled from a _Gaussian Random Field_.
 All the models discussed in this chapter can be stated in terms of these random fields.
-In the random field nomenclature, the fixed effects are known as the _drift_, or the _mean field_, and the covariance in errors is known as the _correlation function_, or _kernel operator_. Assuming stationarity, these simplify to the _power spectrum_. 
+In the random field nomenclature, the fixed effects are known as the _drift_, or the _mean field_, and the covariance in errors is known as the _correlation function_.
+In other fields of literature the correlation function is known as a _charachteristic function_, _radial basis functions_, or _kernel_. 
+Assuming stationarity, these simplify to the _power spectrum_ via the _Wiener–Khinchin theorem_.
+The predictions of such models may be found under the names of _linear projection operators_, _best linear unbiased prediction_, _Kriging_, _radial basis function interpolators_. 
 
 
 ### Relation to Empirical Risk Minimization (ERM)
@@ -593,8 +596,8 @@ In this sense, GEE can be seen as more general than LMM in that the GEE need not
 
 
 ### Relation to Generalized Method of Moments (GMM)
-Moment matching estimators are more general than likelihood based estimators in that assuming the likelihood implies all momemnts are assumed, where as in GMMs, not all moments are assumed. 
-For GMM estimators in R, see the __gmm__ pacakge. 
+Moment matching estimators are more general than likelihood based estimators in that assuming the likelihood implies all moments are assumed, where as in GMMs, not all moments are assumed. 
+For GMM estimators in R, see the __gmm__ package. 
 
 
 
