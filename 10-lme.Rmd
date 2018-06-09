@@ -504,7 +504,7 @@ Things to note:
 
 We can now inspect the contrivance implied by our model's specification:
 ```{r}
-the.cov <- mgcv::extract.lme.cov(fm2Ovar.lme, data = Ovary) 
+the.cov <- mgcv::extract.lme.cov(fm1Ovar.lme, data = Ovary) 
 lattice::levelplot(the.cov)
 ```
 

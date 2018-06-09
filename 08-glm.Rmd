@@ -297,8 +297,10 @@ detach(cases)
 _Probit regression_ is the same as _logistic regression_, only using a different link function. 
 
 ```{r probit}
+attach(PlantGrowth)
 glm.1.2<- glm(weight.factor~group, family=binomial(link = "probit"))
 summary(glm.1.2)
+detach(PlantGrowth)
 ```
 
 Things to note:
