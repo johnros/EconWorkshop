@@ -63,7 +63,7 @@ auto[,gearbox:model,] %>% head # exctract column range
 auto[,gearbox,] %>% table
 auto[vehicleType=='coupe' & gearbox=='automatik',,] %>% dim # intersect conditions
 auto[,table(vehicleType),] # uhh? why would this even work?!?
-auto[, mean(price), by=vehicleType] # average price by car group
+auto[, mean(price, na.rm=TRUE), by=vehicleType] # average price by car group
 ```
 
 
@@ -88,12 +88,12 @@ auto[,c(mean(price), mean(powerPS)), by=vehicleType]
 
 Use a `list()` instead of `c()`, within `data.table` commands:
 ```{r}
-auto[,list(mean(price), mean(powerPS)), by=vehicleType]
+auto[,list(mean(price, na.rm=TRUE), mean(powerPS, na.rm=TRUE)), by=vehicleType]
 ```
 
 You can add names to your new variables:
 ```{r}
-auto[,list(Price=mean(price), Power=mean(powerPS)), by=vehicleType]
+auto[,list(Price=mean(price, na.rm=TRUE), Power=mean(powerPS, na.rm=TRUE)), by=vehicleType]
 ```
 
 You can use `.()` to replace the longer `list()` command:
@@ -185,7 +185,7 @@ There are several types of joins:
 - __Right join__: Returns the rows along the index of the "right" data set.
 
 Assuming `DT1` is the "left" data set, we see that `DT1[DT2,,]` is a right join, and `DT2[DT1,,]` is a left join.
-For an inner join use the `nomath=0` argument:
+For an inner join use the `nomatch=0` argument:
 ```{r}
 DT1[DT2,,,nomatch=0]
 DT2[DT1,,,nomatch=0]

@@ -25,7 +25,7 @@
 <meta name="author" content="Jonathan D. Rosenblatt">
 
 
-<meta name="date" content="2018-06-10">
+<meta name="date" content="2018-06-12">
 
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -739,7 +739,7 @@ lattice<span class="op">::</span><span class="kw">levelplot</span>(the.cov)</cod
 </div>
 <div id="relation-to-conditional-gaussian-fields" class="section level3">
 <h3><span class="header-section-number">8.5.3</span> Relation to Conditional Gaussian Fields</h3>
-<p>In the geo-spatial literature, geo-located measurements are typically assumed to be sampled from a <em>Gaussian Random Field</em>. All the models discussed in this chapter can be stated in terms of these random fields. In the random field nomenclature, the fixed effects are known as the <em>drift</em>, or the <em>mean field</em>, and the covariance in errors is known as the <em>correlation function</em>, or <em>kernel operator</em>. Assuming stationarity, these simplify to the <em>power spectrum</em>.</p>
+<p>In the geo-spatial literature, geo-located measurements are typically assumed to be sampled from a <em>Gaussian Random Field</em>. All the models discussed in this chapter can be stated in terms of these random fields. In the random field nomenclature, the fixed effects are known as the <em>drift</em>, or the <em>mean field</em>, and the covariance in errors is known as the <em>correlation function</em>. In other fields of literature the correlation function is known as a <em>charachteristic function</em>, <em>radial basis functions</em>, or <em>kernel</em>. Assuming stationarity, these simplify to the <em>power spectrum</em> via the <em>Wiener–Khinchin theorem</em>. The predictions of such models may be found under the names of <em>linear projection operators</em>, <em>best linear unbiased prediction</em>, <em>Kriging</em>, <em>radial basis function interpolators</em>.</p>
 </div>
 <div id="relation-to-empirical-risk-minimization-erm" class="section level3">
 <h3><span class="header-section-number">8.5.4</span> Relation to Empirical Risk Minimization (ERM)</h3>
@@ -755,7 +755,7 @@ lattice<span class="op">::</span><span class="kw">levelplot</span>(the.cov)</cod
 </div>
 <div id="relation-to-generalized-method-of-moments-gmm" class="section level3">
 <h3><span class="header-section-number">8.5.7</span> Relation to Generalized Method of Moments (GMM)</h3>
-<p>Moment matching estimators are more general than likelihood based estimators in that assuming the likelihood implies all momemnts are assumed, where as in GMMs, not all moments are assumed. For GMM estimators in R, see the <strong>gmm</strong> pacakge.</p>
+<p>Moment matching estimators are more general than likelihood based estimators in that assuming the likelihood implies all moments are assumed, where as in GMMs, not all moments are assumed. For GMM estimators in R, see the <strong>gmm</strong> package.</p>
 </div>
 <div id="manova" class="section level3">
 <h3><span class="header-section-number">8.5.8</span> Relation to MANOVA</h3>
