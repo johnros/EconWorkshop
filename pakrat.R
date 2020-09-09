@@ -1,0 +1,13 @@
+options(repos=structure(BiocManager::repositories()))
+packrat::on()
+packrat::restore()
+
+# packrat::init()
+packrat::set_opts(vcs.ignore.lib=T)
+packrat::set_opts(vcs.ignore.src=T)
+packrat::status()
+packrat::snapshot()
+# packrat::clean()
+# packrat::off()
+
+# unlink("packrat/lib-R", recursive = TRUE)

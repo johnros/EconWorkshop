@@ -1,0 +1,512 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+# Linear Mixed Models {#lme}
+
+```{example, label='dependence', name="Dependent Samples on the Mean"}
+Consider inference on a population's mean.
+Supposedly, more observations imply more information. This, however, is not the case if samples are completely dependent. More observations do not add any new information.
+From this example one may think that dependence reduces information. This is a false intuition: negative correlations imply oscillations about the mean, so they are actually more informative on the mean than independent observations. 
+```
+
+
+```{example, label='repeated-measures', name="Repeated Measures"}
+Consider a prospective study, i.e., data that originates from selecting a set of subjects and making measurements on them over time. 
+Also assume that some subjects received some treatment, and other did not. 
+When we want to infer on the population from which these subjects have been sampled, we need to recall that some series of observations came from the same subject. 
+If we were to ignore the subject of origin, and treat each observation as an independent sample point, we will think we have more information on treatment effects than we actually do, i.e., we will have a false sense of security in our inference. 
+```
+
+Sources of variability, i.e. noise, are known in the statistical literature as "random effects". 
+Specifying these sources determines the correlation structure in our measurements.
+In the simplest linear models of Chapter \@ref(lm), we thought of the variability as originating from measurement error, thus independent of anything else. 
+No-correlation, and fixed variability is known as _sphericity_. 
+Sphericity is of great mathematical convenience, but quite often, unrealistic. 
+
+The effects we want to infer on are assumingly non-random, and known "fixed-effects". 
+Sources of variability in our measurements, known as "random-effects" are usually not the object of interest. 
+A model which has both random-effects, and fixed-effects, is known as a "mixed effects" model. 
+If the model is also linear, it is known as a _linear mixed model_ (LMM).
+Here are some examples where LMMs arise. 
+
+
+```{example, label='fixed-effects', name="Fixed and Random Machine Effect"}
+Consider a problem from industrial process control: testing for a change in diamteters of manufactured bottle caps.
+We want to study the fixed effect of time: before versus after. 
+Bottle caps are produced by several machines.
+Clearly there is variablity in the diameters within-machine and between-machines.
+Given a sample of bottle caps from many machines, we could standardize measurements by removing each machine's average.
+This implies we treat machines as fixed effects, subtract them, and consider within-machine variability is the only source of variability. The subtraction of the machine effect, removed information on between-machine variability.  
+Alternatively, we could consider between-machine variability as another source of uncertainty when inferring on the temporal fixed effect. In which case, would not subtract the machine-effect, bur rather, treat it as a random-effect, in the LMM framework.
+```
+
+
+
+```{example, label='random-effects', name="Fixed and Random Subject Effect"}
+Consider an experimenal design where each subject is given 2 types of diets, and his health condition is recorded.
+We could standardize over subjects by removing the subject-wise average, before comparing diets.
+This is what a paired (t-)test does.
+This also implies the within-subject variability is the only source of variability we care about.
+Alternatively, for inference on the population of "all subjects" we need to adress the between-subject variability, and not only the within-subject variability. 
+```
+
+
+The unifying theme of the above examples, is that the variability in our data has several sources. 
+Which are the sources of variability that need to concern us? 
+This is a delicate matter which depends on your goals. 
+As a rule of thumb, we will suggest the following view:
+__If information of an effect will be available at the time of prediction, treat it as a fixed effect. If it is not, treat it as a random-effect.__
+
+
+LMMs are so fundamental, that they have earned many names:
+
+- __Mixed Effects__: 
+Because we may have both _fixed effects_ we want to estimate and remove, and _random effects_ which contribute to the variability to infer against.
+
+- __Variance Components__: 
+Because as the examples show, variance has more than a single source (like in the Linear Models of Chapter \@ref(lm)).
+
+- __Hierarchical Models__: 
+Because as Example \@ref(exm:random-effects) demonstrates, we can think of the sampling as hierarchical-- first sample a subject, and then sample its response. 
+
+- __Multilevel Analysis__:
+For the same reasons it is also known as Hierarchical Models. 
+
+- __Repeated Measures__: 
+Because we make several measurements from each unit, like in Example \@ref(exm:random-effects).
+
+- __Longitudinal Data__: 
+Because we follow units over time, like in Example \@ref(exm:random-effects).
+
+- __Panel Data__:
+Is the term typically used in econometric for such longitudinal data. 
+
+
+Whether we are aiming to infer on a generative model's parameters, or to make predictions, there is no "right" nor "wrong" approach. Instead, there is always some implied measure of error, and an algorithm may be good, or bad, with respect to this measure (think of false and true positives, for instance).
+This is why we care about dependencies in the data: ignoring the dependence structure will probably yield inefficient algorithms.
+Put differently, if we ignore the statistical dependence in the data we will probably me making more errors than possible/optimal.
+
+
+We now emphasize: 
+
+1. Like in previous chapters, by "model" we refer to the assumed generative distribution, i.e., the sampling distribution. 
+
+1. In a LMM we specify the dependence structure via the hierarchy in the sampling scheme E.g. caps within machine, students within class, etc.
+Not all dependency models can be specified in this way!
+Dependency structures that are not hierarchical include temporal dependencies ([AR](https://en.wikipedia.org/wiki/Autoregressive_model), [ARIMA](https://en.wikipedia.org/wiki/Autoregressive_integrated_moving_average), [ARCH](https://en.wikipedia.org/wiki/Autoregressive_conditional_heteroskedasticity) and GARCH), [spatial](https://en.wikipedia.org/wiki/Spatial_dependence), [Markov Chains](https://en.wikipedia.org/wiki/Markov_chain), and more. 
+To specify dependency structures that are no hierarchical, see Chapter 8 in (the excellent) @weiss2005modeling.
+
+1. If you are using LMMs for predictions, and not for inference on the fixed effects or variance components, then see the Supervised Learning Chapter \@ref(supervised).
+Also recall that machine learning from non-independent observations (such as LMMs) is a delicate matter. 
+
+
+## Problem Setup
+
+We denote an outcome with $y$ and assume its sampling distribution is given by
+\begin{align}
+  y|x,z = x'\beta + z'u + \varepsilon
+  (\#eq:mixed-model)  
+\end{align}
+where $x$ are the factors with (fixed) effects we want to study, and$\beta$ denotes these effects.
+The factors $z$, with effects $u$, merely contribute to variability in $y|x$. 
+
+In our repeated measures example (\@ref(exm:repeated-measures)) the treatment is a fixed effect, and the subject is a random effect. 
+In our bottle-caps example (\@ref(exm:fixed-effects)) the time (before vs. after) is a fixed effect, and the machines may be either a fixed or a random effect (depending on the purpose of inference). 
+In our diet example (\@ref(exm:random-effects)) the diet is the fixed effect and the subject is a random effect.
+
+Notice that we state $y|x,z$ merely as a convenient way to do inference on $y|x$.
+We could, instead, specify $Var[y|x]$ directly. 
+The second approach seems less convenient. 
+This is the power of LMMs! 
+We specify the covariance not via the matrix $Var[z'u|x]$, or $Var[y|x]$, but rather via the sampling hierarchy.
+
+Given a sample of $n$ observations $(y_i,x_i,z_i)$ from model \@ref(eq:mixed-model), we will want to estimate $(\beta,u)$.
+Under some assumption on the distribution of $\varepsilon$ and $z$, we can use _maximum likelihood_ (ML). 
+In the context of LMMs, however, ML is typically replaced with _restricted maximum likelihood_ (ReML), because it returns unbiased estimates of $Var[y|x]$ and ML does not.
+
+
+
+### Non-Linear Mixed Models
+The idea of random-effects can also be extended to non-linear mean models. 
+Formally, this means that $y|x,z=f(x,z,\varepsilon)$ for some non-linear $f$. 
+This is known as _non-linear-mixed-models_, which will not be discussed in this text. 
+
+
+
+### Generalized Linear Mixed Models (GLMM)
+You can marry the ideas of random effects, with non-linear link functions, and non-Gaussian distribution of the response. 
+These are known as _Generalized Linear Mixed Models_ (GLMM), which will not be discussed in this text. 
+
+
+
+## LMMs in  R
+
+We will fit LMMs with the `lme4::lmer` function.
+The __lme4__ is an excellent package, written by the mixed-models Guru [Douglas Bates](http://www.stat.wisc.edu/~bates/).
+We start with a small simulation demonstrating the importance of acknowledging your sources of variability. 
+Our demonstration consists of fitting a linear model that assumes independence, when data is clearly dependent. 
+
+```{r}
+n.groups <- 4 # number of groups
+n.repeats <- 2 # samples per group
+groups <- rep(1:n.groups, each=n.repeats) %>% as.factor
+n <- length(groups)
+z0 <- rnorm(n.groups, 0, 10) 
+(z <- z0[as.numeric(groups)]) # generate and inspect random group effects
+epsilon <- rnorm(n,0,1) # generate measurement error
+
+beta0 <- 2 # this is the actual parameter of interest! The global mean.
+
+y <- beta0 + z + epsilon # sample from an LMM
+```
+
+We can now fit the linear and LMM.
+```{r, lme vs lm}
+# fit a linear model assuming independence
+lm.5 <- lm(y~1)  
+
+# fit a mixed-model that deals with the group dependence
+library(lme4)
+lme.5 <- lmer(y~1|groups) 
+```
+
+The summary of the linear model
+
+```{r, label='lm5'}
+summary.lm.5 <- summary(lm.5)
+summary.lm.5
+```
+
+The summary of the LMM
+
+```{r, label='lme5'}
+summary.lme.5 <- summary(lme.5)
+summary.lme.5
+```
+Look at the standard error of the global mean, i.e., the intercept:
+for `lm` it is `r round(summary.lm.5$coefficients[1,2],3)`, and for `lme` it is `r round(summary.lme.5$coefficients[1,2],3)`.
+Why this difference? 
+Because `lm` treats the group effect as fixed, while the mixed model treats the group effect as a source of noise/uncertainty.
+Inference using `lm` underestimates our uncertainty in the estimated population mean ($\beta_0$).
+This is that false-sense of security we may have when ignoring correlations.
+
+
+#### Relation to Paired t-test
+
+Recall the paired t-test.
+Our two-sample--per-group example of the LMM is awfully similar to a paired t-test.
+It would be quite troubling if the well-known t-test and the oh-so-powerful LMM would lead to diverging conclusions.
+In the previous, we inferred on the global mean; a quantity that cancels out when pairing. For a fair comparison, let's infer on some temporal effect. 
+Compare the t-statistic below, to the `t value` in the summary of `lme.6`.
+Luckily, as we demonstrate, the paired t-test and the LMM are equivalent.
+So if you follow authors like @barr2013random that recommend LMMs instead of pairing, remember, these things are sometimes equivalent.
+
+```{r}
+time.fixed.effect <- rep(c('Before','After'), times=4) %>% factor
+head(cbind(y,groups,time.fixed.effect))
+lme.6 <- lmer(y~time.fixed.effect+(1|groups)) 
+
+coef(summary(lme.6))
+t.test(y~time.fixed.effect, paired=TRUE)$statistic
+```
+
+
+
+### A Single Random Effect
+
+We will use the `Dyestuff` data from the __lme4__ package, which encodes the yield, in grams, of a coloring solution (`dyestuff`), produced in 6 batches using 5 different preparations.
+
+```{r}
+data(Dyestuff, package='lme4')
+attach(Dyestuff)
+head(Dyestuff)
+```
+
+And visually
+
+```{r}
+lattice::dotplot(Yield~Batch)
+```
+
+The plot confirms that `Yield` varies between `Batch`s.
+We do not want to study this batch effect, but we want our inference to apply to new, unseen, batches^[Think: why bother treating the `Batch` effect as noise? Should we now just subtract `Batch` effects? This is not a trick question.]. 
+We thus need to account for the two sources of variability when inferring on the (global) mean: the within-batch variability, and the between-batch variability 
+We thus fit a mixed model, with an intercept and random batch effect.
+
+```{r random intercept}
+lme.1<- lmer( Yield ~ 1 + (1|Batch)  , Dyestuff )
+summary(lme.1)
+```
+
+Things to note:
+
+- The syntax `Yield ~ (1|Batch)` tells `lme4::lmer` to fit a model with a global intercept (`1`) and a random Batch effect (`1|Batch`). The `|` operator is the cornerstone of random effect modeling with `lme4::lmer`. 
+- `1+` isn't really needed. `lme4::lmer`, like `stats::lm` adds it be default. We put it there to remind you it is implied. 
+- As usual, `summary` is content aware and has a different behavior for `lme` class objects.
+- The output distinguishes between random effects ($u$), a source of variability, and fixed effect ($\beta$), which we want to study. The mean of the random effect is not reported because it is unassumingly 0.
+- Were we not interested in standard errors, `lm(Yield ~ Batch)` would have returned the same (fixed) effects estimates.
+
+Some utility functions let us query the `lme` object. 
+The function `coef` will work, but will return a cumbersome output. Better use `fixef` to extract the fixed effects, and `ranef` to extract the random effects.
+The model matrix (of the fixed effects alone), can be extracted with `model.matrix`, and predictions with `predict`.
+
+
+
+
+
+
+### A Full Mixed-Model
+
+In the `sleepstudy` data, we recorded the reaction times to a series of tests (`Reaction`), after various subject (`Subject`) underwent various amounts of sleep deprivation (`Day`).
+
+```{r, echo=FALSE}
+data(sleepstudy)
+lattice::xyplot(Reaction ~ Days | Subject, data=sleepstudy, 
+             type = c("g", "p", "r"),
+             index.cond = function(x,y) coef(lm(y ~ x))[1],
+             xlab = "Days of sleep deprivation",
+             ylab = "Average reaction time (ms)")
+```
+
+We now want to estimate the (fixed) effect of the days of sleep deprivation on response time, while allowing each subject to have his/hers own effect.
+Put differently, we want to estimate a _random slope_ for the effect of `day`.
+The fixed `Days` effect can be thought of as the average slope over subjects.
+
+```{r random slope}
+lme.3 <- lmer ( Reaction ~ Days + ( Days | Subject ) , data= sleepstudy )
+```
+
+Things to note:
+
+- `~Days` specifies the fixed effect. 
+- We used the `(Days|Subject)` syntax to tell `lme4::lmer` we want to fit the model `~Days` within each subject. Just like when modeling with `stats::lm`, `(Days|Subject)` is interpreted as `(1+Days|Subject)`, so we get a random intercept and slope, per subject.
+- Were we not interested in standard errors, `stats::lm(Reaction~Days*Subject)` would have returned (almost) the same effects. Why "almost"? See below... 
+
+
+The fixed day effect is:
+
+```{r}
+fixef(lme.3)
+```
+
+The variability in the average response (intercept) and day effect is
+
+```{r}
+ranef(lme.3) %>% lapply(head)
+```
+
+Did we really need the whole `lme` machinery to fit a within-subject linear regression and then average over subjects?
+The short answer is that if we have a enough data for fitting each subject with it's own `lm`, we don't need `lme`. 
+The longer answer is that the assumptions on the distribution of random effect, namely, that they are normally distributed, allow us to pool information from one subject to another. 
+In the words of John Tukey: "we borrow strength over subjects".
+If the normality assumption is true, this is very good news.
+If, on the other hand, you have a lot of samples per subject, and you don't need to "borrow strength" from one subject to another, you can simply fit within-subject linear models without the mixed-models machinery.
+This will avoid any assumptions on the distribution of effects over subjects. 
+For a full discussion of the pro's and con's of hierarchical mixed models, consult our Bibliographic Notes. 
+
+To demonstrate the "strength borrowing", here is a comparison of the lme, versus the effects of fitting a linear model to each subject separately. 
+
+```{r, echo=FALSE}
+library(lattice)
+df <- coef(lmList(Reaction ~ Days | Subject, sleepstudy))
+fclow <- subset(df, `(Intercept)` < 251)
+fchigh <- subset(df, `(Intercept)` > 251)
+cc1 <- as.data.frame(coef(lme.3)$Subject)
+names(cc1) <- c("A", "B")
+df <- cbind(df, cc1)
+ff <- fixef(lme.3)
+with(df,
+     print(xyplot(`(Intercept)` ~ Days, aspect = 1,
+                  x1 = B, y1 = A,
+                  panel = function(x, y, x1, y1, subscripts, ...) {
+                    panel.grid(h = -1, v = -1)
+                    x1 <- x1[subscripts]
+                    y1 <- y1[subscripts]
+                    larrows(x, y, x1, y1, type = "closed", length = 0.1,
+                            angle = 15, ...)
+                    lpoints(x, y,
+                            pch = trellis.par.get("superpose.symbol")$pch[2],
+                            col = trellis.par.get("superpose.symbol")$col[2])
+                    lpoints(x1, y1,
+                            pch = trellis.par.get("superpose.symbol")$pch[1],
+                            col = trellis.par.get("superpose.symbol")$col[1])
+                    lpoints(ff[2], ff[1], 
+                            pch = trellis.par.get("superpose.symbol")$pch[3],
+                            col = trellis.par.get("superpose.symbol")$col[3])
+                    ltext(fclow[,2], fclow[,1], row.names(fclow),
+                          adj = c(0.5, 1.7))
+                    ltext(fchigh[,2], fchigh[,1], row.names(fchigh),
+                          adj = c(0.5, -0.6))
+                  },
+                  key = list(space = "top", columns = 3,
+                             text = list(c("Mixed model", "Within-group", "Population")),
+                             points = list(col = trellis.par.get("superpose.symbol")$col[1:3],
+                                           pch = trellis.par.get("superpose.symbol")$pch[1:3]))
+     )))
+
+```
+
+Here is a comparison of the random-day effect from `lme` versus a subject-wise linear model. They are not the same.
+
+```{r, echo=FALSE}
+print(xyplot(Reaction ~ Days | Subject, sleepstudy, aspect = "xy",
+             layout = c(9,2), type = c("g", "p", "r"),
+             coef.list = df[,3:4],
+             panel = function(..., coef.list) {
+               panel.xyplot(...)
+               panel.abline(as.numeric(coef.list[packet.number(),]),
+                            col.line = trellis.par.get("superpose.line")$col[2],
+                            lty = trellis.par.get("superpose.line")$lty[2]
+               )
+               panel.abline(fixef(lme.3),
+                            col.line = trellis.par.get("superpose.line")$col[4],
+                            lty = trellis.par.get("superpose.line")$lty[4]
+               )
+             },
+             index.cond = function(x,y) coef(lm(y ~ x))[1],
+             xlab = "Days of sleep deprivation",
+             ylab = "Average reaction time (ms)",
+             key = list(space = "top", columns = 3,
+                        text = list(c("Within-subject", "Mixed model", "Population")),
+                        lines = list(col = trellis.par.get("superpose.line")$col[c(2:1,4)],
+                                     lty = trellis.par.get("superpose.line")$lty[c(2:1,4)]))))
+```
+
+
+
+
+### Sparsity and Memory Efficiency
+In Chapter \@ref(sparse) we discuss how to efficiently represent matrices in memory. 
+At this point we can already hint that the covariance matrices implied by LMMs are sparse. This fact is exploited in the __lme4__ package, making it very efficient computationally. 
+
+
+
+## Serial Correlations in Space/Time {#serial}
+
+As previously stated, a hierarchical model of the type $y=x'\beta+z'u+\epsilon$ is a very convenient way to state the correlations of $y|x$ instead of specifying the matrix $Var[z'u+\epsilon|x]$ for various $x$ and $z$.
+The hierarchical sampling scheme implies correlations in blocks. 
+What if correlations do not have a block structure? 
+Temporal data or spatial data, for instance, tend to present correlations that decay smoothly in time/space.
+These correlations cannot be represented via a hierarchical sampling scheme.
+
+One way to go about, is to find a dedicated package for space/time data. 
+For instance, in the [Spatio-Temporal Data](https://cran.r-project.org/web/views/SpatioTemporal.html) task view, or the [Ecological and Environmental](https://cran.r-project.org/web/views/Environmetrics.html) task view. 
+
+Instead, we will show how to solve this matter using the __nlme__ package. 
+This is because __nlme__ allows to compound the blocks of covariance of LMMs, with the smoothly decaying covariances of space/time models.
+
+We now use an example from the help of `nlme::corAR1`.
+The `nlme::Ovary` data is panel data of number of ovarian follicles in different mares (female horse), at various times.  
+We fit a model with a random `Mare` effect, and correlations that decay geometrically in time.
+In the time-series literature, this is known as an _auto-regression of order 1_ model, or AR(1), in short. 
+
+```{r}
+library(nlme)
+head(nlme::Ovary)
+fm1Ovar.lme <- nlme::lme(fixed=follicles ~ sin(2*pi*Time) + cos(2*pi*Time), 
+                   data = Ovary, 
+                   random = pdDiag(~sin(2*pi*Time)), 
+                   correlation=corAR1() )
+summary(fm1Ovar.lme)
+```
+
+Things to note:
+
+- The fitting is done with the `nlme::lme` function, and not `lme4::lmer`.
+- `sin(2*pi*Time) + cos(2*pi*Time)` is a fixed effect that captures seasonality. 
+- The temporal covariance, is specified using the `correlations=` argument. 
+- AR(1) was assumed by calling `correlation=corAR1()`. See `nlme::corClasses` for a list of supported correlation structures.
+- From the summary, we see that a `Mare` random effect has also been added. Where is it specified? It is implied by the `random=` argument. Read `?lme` for further details.
+
+We can now inspect the contrivance implied by our model's specification.
+As expected, we see the blocks of non-null covariance within `Mare`, but unlike "vanilla" LMMs, the covariance within mare is not fixed. Rather, it decays geometrically with time. 
+
+```{r, echo=FALSE}
+the.cov <- mgcv::extract.lme.cov(fm1Ovar.lme, data = Ovary)[1:110,1:110] 
+lattice::levelplot(the.cov, 
+                   col.regions=colorspace::sequential_hcl(n = 3e1))
+```
+
+
+
+
+## Extensions 
+
+
+
+
+### Cluster Robust Standard Errors {#cr-se}
+
+As previously stated, random effects are nothing more than a convenient way to specify covariances within a level of a random effect, i.e., within a group/cluster.
+This is also the motivation underlying _cluster robust_ inference, which is immensely popular with econometricians, but less so elsewhere. 
+With cluster robust inference, we assume a model of type $y=f(x)+\varepsilon$; unlike LMMs we assume independence (conditional on $x$), but we allow $\varepsilon$ within clusters defined by $x$.
+For a longer comparison between the two approaches, see [Michael Clarck's guide](https://m-clark.github.io/docs/clustered/).
+
+
+
+### Linear Models for Panel Data
+
+__nlme__ and __lme4__ will probably provide you with all the functionality you need for panel data.
+If, however, you are trained as an econometrician, and prefer the econometric parlance, then the [plm](https://cran.r-project.org/package=plm) and [panelr](https://www.jacob-long.com/post/panelr-intro/) packages for panel linear models, are just for you. 
+In particular, they allow for cluster-robust covariance estimates, and Durbin–Wu–Hausman test for random effects. 
+The __plm__ [package vignette](https://cran.r-project.org/web/packages/plm/vignettes/plm.pdf) also has an interesting comparison to the __nlme__ package.
+
+
+
+
+### Testing Hypotheses on Correlations
+
+After working so hard to model the correlations in observation, we may want to test if it was all required. 
+Douglas Bates, the author of __nlme__ and __lme4__ wrote a famous cautionary note, [found here](https://stat.ethz.ch/pipermail/r-help/2006-May/094765.html), on hypothesis testing in mixed models, in particular hypotheses on variance components.
+Many practitioners, however, did not adopt Doug's view. 
+Many of the popular tests, particularly the ones in the econometric literature, can be found in the __plm__ package (see Section 6 in the [package vignette](https://cran.r-project.org/web/packages/plm/vignettes/plm.pdf)).
+These include tests for poolability, Hausman test, tests for serial correlations, tests for cross-sectional dependence, and unit root tests. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Bibliographic Notes
+Most of the examples in this chapter are from the documentation of the __lme4__ package [@lme4]. 
+For a general and very applied treatment, see @pinero2000mixed.
+As usual, a hands on view can be found in @venables2013modern, and also in an excellent blog post by [Kristoffer Magnusson](http://rpsychologist.com/r-guide-longitudinal-lme-lmer)
+For a more theoretical view see @weiss2005modeling or @searle2009variance.
+Sometimes it is unclear if an effect is random or fixed; on the difference between the two types of inference see the classics: @eisenhart1947assumptions, @kempthorne1975fixed, and the more recent @rosset2018fixed.
+For an interactive, beautiful visualization of the shrinkage introduced by mixed models, see [Michael Clark's blog](http://m-clark.github.io/posts/2019-05-14-shrinkage-in-mixed-models/).
+For more on predictions in linear mixed models see @robinson1991blup, @rabinowicz2018assessing, and references therein.
+See [Michael Clarck's](https://m-clark.github.io/docs/clustered/) guide for various ways of dealing with correlations within groups.
+For the geo-spatial view and terminology of correlated data, see @christakos2000modern, @diggle1998model, @allard2013j, and @cressie2015statistics.
+
+
+
+
+## Practice Yourself
+
+1. Computing the variance of the sample mean given dependent correlations. How does it depend on the covariance between observations? When is the sample most informative on the population mean? 
+
+1. Think: when is a paired t-test not equivalent to an LMM with two measurements per group?
+
+
+1. Return to the `Penicillin` data set. Instead of fitting an LME model, fit an LM model with `lm`. I.e., treat all random effects as fixed. 
+    a. Compare the effect estimates. 
+    a. Compare the standard errors. 
+    a. Compare the predictions of the two models. 
+1. [Very Advanced!] Return to the `Penicillin` data and use the `gls` function to fit a generalized linear model, equivalent to the LME model in our text. 
+1. Read about the "oats" dataset using `? MASS::oats `.Inspect the dependency of the yield (Y) in the Varieties (V) and the Nitrogen treatment (N).
+    1. Fit a linear model, does the effect of the treatment significant? The interaction between the Varieties and Nitrogen is significant?
+    1. An expert told you that could be a variance between the different blocks (B) which can bias the analysis. fit a LMM for the data.
+    1. Do you think the blocks should be taken into account as "random effect" or "fixed effect"?
+
+1. Return to the temporal correlation in Section \@ref(serial), and replace the AR(1) covariance, with an ARMA covariance. Visualize the data's covariance matrix, and compare the fitted values. 
+
+See DataCamps' [Hierarchical and Mixed Effects Models](https://www.datacamp.com/courses/hierarchical-and-mixed-effects-models) for more self practice.

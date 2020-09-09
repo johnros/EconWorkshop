@@ -1,0 +1,392 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+# Multivariate Data Analysis {#multivariate}
+
+The term "multivariate data analysis" is so broad and so overloaded, that we start by clarifying what is discussed and what is not discussed in this chapter.
+Broadly speaking, we will discuss statistical _inference_, and leave more "exploratory flavored" matters like clustering, and visualization, to the Unsupervised Learning Chapter \@ref(unsupervised).
+
+We start with an example.
+
+```{example, label='icu'}
+Consider the problem of a patient monitored in the intensive care unit. 
+At every minute the monitor takes $p$ physiological measurements: blood pressure, body temperature, etc.
+The total number of minutes in our data is $n$, so that in total, we have $n \times p$ measurements, arranged in a matrix. 
+We also know the typical $p$-vector of typical measurements for this patient when healthy, denoted $\mu_0$.
+```
+
+Formally, let $y$ be single (random) measurement of a $p$-variate random vector.
+Denote $\mu:=E[y]$.
+Here is the set of problems we will discuss, in order of their statistical difficulty. 
+
+- __Signal Detection__: 
+a.k.a. _multivariate test_, or _global test_, or _omnibus test_.
+Where we test whether $\mu$ differs than some $\mu_0$. 
+
+
+- __Signal Counting__: 
+a.k.a. _prevalence estimation_, or _$\pi_0$ estimation_. 
+Where we count the number of entries in $\mu$ that differ from $\mu_0$.
+
+- __Signal Identification__:
+a.k.a. _selection_, or _multiple testing_.
+Where we infer which of the entries in $\mu$ differ from $\mu_0$. 
+In the ANOVA literature, this is known as a __post-hoc__ analysis, which follows an _omnibus test_.
+
+- __Estimation__: 
+Estimating the magnitudes of entries in $\mu$, and their departure from $\mu_0$. 
+If estimation follows a _signal detection_ or _signal identification_ stage, this is known as _selective estimation_.
+
+
+
+```{example, label='brain-imaging'}
+Consider the problem of detecting regions of cognitive function in the brain using fMRI.
+Each measurement is the activation level at each location in a brain's region.
+If the region has a cognitive function, the mean activation differs than $\mu_0=0$ when the region is evoked.
+```
+
+```{example, label='genetics'}
+Consider the problem of detecting cancer encoding regions in the genome.
+Each measurement is the vector of the genetic configuration of an individual.
+A cancer encoding region will have a different (multivariate) distribution between sick and healthy.
+In particular, $\mu$ of sick will differ from $\mu$ of healthy.
+```
+
+
+```{example, label='regression'}
+Consider the problem of the simplest multiple regression. 
+The estimated coefficient, $\hat \beta$ are a random vector.
+Regression theory tells us that its covariance is $Var[\hat \beta|X]=(X'X)^{-1}\sigma^2$, and null mean of $\beta$.
+We thus see that inference on the vector of regression coefficients, is nothing more than a multivaraite inference problem.
+```
+
+
+
+
+
+## Signal Detection
+Signal detection deals with the detection of the departure of $\mu$ from some $\mu_0$, and especially, $\mu_0=0$.
+This problem can be thought of as the multivariate counterpart of the univariate hypothesis t-test. 
+
+### Hotelling's T2 Test
+The most fundamental approach to signal detection is a mere generalization of the t-test, known as _Hotelling's $T^2$ test_. 
+
+Recall the univariate t-statistic of a data vector $x$ of length $n$:
+\begin{align}
+  t^2(x):= \frac{(\bar{x}-\mu_0)^2}{Var[\bar{x}]}= (\bar{x}-\mu_0)Var[\bar{x}]^{-1}(\bar{x}-\mu_0),
+  (\#eq:t-test)
+\end{align}
+where $Var[\bar{x}]=S^2(x)/n$, and $S^2(x)$ is the unbiased variance estimator $S^2(x):=(n-1)^{-1}\sum (x_i-\bar x)^2$.
+
+Generalizing Eq\@ref(eq:t-test) to the multivariate case: 
+$\mu_0$ is a $p$-vector, $\bar x$ is a $p$-vector, and $Var[\bar x]$ is a $p \times p$ matrix of the covariance between the $p$ coordinated of $\bar x$. 
+When operating with vectors, the squaring becomes a quadratic form, and the division becomes a matrix inverse. 
+We thus have
+\begin{align}
+  T^2(x):= (\bar{x}-\mu_0)' Var[\bar{x}]^{-1} (\bar{x}-\mu_0),
+  (\#eq:hotelling-test)
+\end{align}
+which is the definition of Hotelling's $T^2$ one-sample test statistic. 
+We typically denote the covariance between coordinates in $x$ with $\hat \Sigma(x)$, so that 
+$\widehat \Sigma_{k,l}:=\widehat {Cov}[x_k,x_l]=(n-1)^{-1} \sum (x_{k,i}-\bar x_k)(x_{l,i}-\bar x_l)$.
+Using the $\Sigma$ notation, Eq.\@ref(eq:hotelling-test) becomes 
+\begin{align}
+  T^2(x):= n (\bar{x}-\mu_0)' \hat \Sigma(x)^{-1} (\bar{x}-\mu_0),
+\end{align}
+which is the standard notation of Hotelling's test statistic.
+
+For inference, we need the null distribution of Hotelling's test statistic. For this we introduce some vocabulary^[This vocabulary is not standard in the literature, so when you read a text, you will need to verify yourself what the author means.]:
+
+1. __Low Dimension__:
+We call a problem _low dimensional_ if $n \gg p$, i.e. $p/n \approx 0$.
+This means there are many observations per estimated parameter.
+1. __High Dimension__: 
+We call a problem _high dimensional_ if $p/n \to c$, where $c\in (0,1)$.
+This means there are more observations than parameters, but not many.
+1. __Very High Dimension__: 
+We call a problem _very high dimensional_ if $p/n \to c$, where $1<c<\infty$.
+This means there are less observations than parameters.
+
+Hotelling's $T^2$ test can only be used in the low dimensional regime. 
+For some intuition on this statement, think of taking $n=20$ measurements of $p=100$ physiological variables. 
+We seemingly have $20$ observations, but there are $100$ unknown quantities in $\mu$. 
+Say you decide that $\mu$ differs from $\mu_0$ based on the coordinate with maximal difference between your data and $\mu_0$. 
+Do you know how much variability to expect of this maximum? 
+Try comparing your intuition with a quick simulation.
+Did the variability of the maximum surprise you? 
+Hotelling's $T^2$ is not the same as the maximum, but the same intuition applies. 
+This criticism is formalized in @bai1996effect. 
+In modern applications, Hotelling's $T^2$ is rarely recommended.
+Luckily, many modern alternatives are available. 
+See @rosenblatt2016better for a review.
+
+
+### Various Types of Signal to Detect
+In the previous, we assumed that the signal is a departure of $\mu$ from some $\mu_0$. 
+For vector-valued data $y$, that is distributed $\mathcal F$, we may define "signal" as any departure from some $\mathcal F_0$. 
+This is the multivaraite counterpart of goodness-of-fit (GOF) tests. 
+
+Even when restricting "signal" to departures of $\mu$ from $\mu_0$, "signal" may come in various forms:
+
+1. __Dense Signal__: when the departure is in a large number of coordinates of $\mu$. 
+1. __Sparse Signal__: when the departure is in a small number of coordinates of $\mu$.
+
+Process control in a manufacturing plant, for instance, is consistent with a dense signal: if a manufacturing process has failed, we expect a change in many measurements (i.e. coordinates of $\mu$). 
+Detection of activation in brain imaging is consistent with a dense signal: if a region encodes cognitive function, we expect a change in many brain locations (i.e. coordinates of $\mu$.)
+Detection of disease encoding regions in the genome is consistent with a sparse signal: if susceptibility of disease is genetic, only a small subset of locations in the genome will encode it. 
+
+Hotelling's $T^2$ statistic is best for dense signal. 
+The next test, is a simple (and forgotten) test best with sparse signal.
+
+
+### Simes' Test
+Hotelling's $T^2$ statistic has currently two limitations: It is designed for dense signals, and it requires estimating the covariance, which is a very difficult problem.
+
+An algorithm, that is sensitive to sparse signal and allows statistically valid detection under a wide range of covariances (even if we don't know the covariance) is known as _Simes' Test_.
+The statistic is defined vie the following algorithm:
+
+1. Compute $p$ variable-wise p-values: $p_1,\dots,p_j$.
+1. Denote $p_{(1)},\dots,p_{(j)}$ the sorted p-values.
+1. Simes' statistic is $p_{Simes}:=min_j\{p_{(j)} \times p/j\}$.
+1. Reject the "no signal" null hypothesis at significance $\alpha$ if $p_{Simes}<\alpha$. 
+
+
+
+### Signal Detection with R
+
+We start with simulating some data with no signal.
+We  will convince ourselves that Hotelling's and Simes' tests detect nothing, when nothing is present.
+We will then generate new data, after injecting some signal, i.e., making $\mu$ depart from $\mu_0=0$. 
+We then convince ourselves, that both Hotelling's and Simes' tests, are indeed capable of detecting signal, when present. 
+
+Generating null data:
+
+```{r}
+library(mvtnorm)
+n <- 100 # observations
+p <- 18 # parameter dimension
+mu <- rep(0,p) # no signal: mu=0
+x <- rmvnorm(n = n, mean = mu)
+dim(x)
+lattice::levelplot(x) # just looking at white noise.
+```
+
+Now making our own Hotelling one-sample $T^2$ test using Eq.(\@ref(eq:hotelling-test)). 
+
+```{r hotelling-function}
+hotellingOneSample <- function(x, mu0=rep(0,ncol(x))){
+  n <- nrow(x)
+  p <- ncol(x)
+  stopifnot(n > 5* p)
+  bar.x <- colMeans(x)
+  Sigma <- var(x)
+  Sigma.inv <- solve(Sigma)
+  T2 <- n * (bar.x-mu0) %*% Sigma.inv %*% (bar.x-mu0)
+  p.value <- pchisq(q = T2, df = p, lower.tail = FALSE)
+  return(list(statistic=T2, pvalue=p.value))
+}
+hotellingOneSample(x)
+```
+
+Things to note:
+
+- `stopifnot(n > 5 * p)` is a little verification to check that the problem is indeed low dimensional. Otherwise, the $\chi^2$ approximation cannot be trusted.
+- `solve` returns a matrix inverse. 
+- `%*%` is the matrix product operator (see also `crossprod()`).
+- A function may return only a single object, so we wrap the statistic and its p-value in a `list` object.
+
+Just for verification, we compare our home made Hotelling's test, to the implementation in the __rrcov__ package. 
+The statistic is clearly OK, but our $\chi^2$ approximation of the distribution leaves room to desire. 
+Personally, I would never trust a Hotelling test if $n$ is not much greater than $p$, in which case the high-dimensional-statistics literature is worth consulting.
+
+```{r}
+rrcov::T2.test(x)
+```
+
+Now write our own Simes' test, and verify that it indeed does not find signal that is not there.
+```{r}
+Simes <- function(x){
+  p.vals <- apply(x, 2, function(z) t.test(z)$p.value) # Compute variable-wise pvalues
+  p <- ncol(x)
+  p.Simes <- p * min(sort(p.vals)/seq_along(p.vals)) # Compute the Simes statistic
+  return(c(pvalue=p.Simes))
+}
+Simes(x)
+```
+
+And now we verify that both tests can indeed detect signal when present. Are p-values small enough to reject the "no signal" null hypothesis?
+```{r}
+mu <- rep(x = 10/p,times=p) # inject signal
+x <- rmvnorm(n = n, mean = mu)
+hotellingOneSample(x)
+Simes(x)
+```
+
+... yes. All p-values are very small, so that all statistics can detect the non-null distribution.
+
+
+
+
+## Signal Counting 
+There are many ways to approach the _signal counting_ problem. 
+For the purposes of this book, however, we will not discuss them directly, and solve the signal counting problem via the solution to a signal identification problem. 
+The rational is the following: if we know __where__ $\mu$ departs from $\mu_0$, we only need to count coordinates to solve the signal counting problem. 
+
+We now make the previous argument a little more accurate.
+Assume you have a selection/identification algorithm, that selects coordinates in $\mu$.
+Denote with $R(\alpha)$ the number of selected coordinates, where $\alpha$ is the coordinate-wise false positive rate. 
+Then $R(\alpha)$ includes approximately $\alpha p$ false positives. 
+Denote by $p_0$ the number of coordinates that do not carry signal.
+Then $p_0 \approx p-(R(\alpha)-p_0 \, \alpha)$.
+Equating the two we have $$\hat p_0=\frac{p-R(\alpha)}{1-\alpha}.$$
+The number of coordinates in $\mu$ that truly carry signal is thus approximately $p-\hat p_0$, which is a solution to the signal counting problem. 
+
+
+## Signal Identification {#identification}
+
+The problem of _signal identification_ is also known as a _selection problem_, or more commonly as _multiple testing_ problem.
+In the ANOVA literature, an identification stage will typically follow a detection stage.
+These are known as the _omnibus F test_, and _post-hoc_ tests, respectively.
+In the multiple testing literature it is quite rare to see a preliminary detection stage, because it is assumed that signal is there; it is merely a problem of how much, and where?
+I.e., counting and selecting, respectively.
+
+The first question when approaching a multiple testing problem is "what is an error"?
+Is an error declaring a coordinate in $\mu$ to be different than $\mu_0$ when it is actually not?
+Is an error an overly high proportion of falsely identified coordinates?
+The former is known as the _family wise error rate_ (FWER), and the latter as the _false discovery rate_ (FDR).
+
+```{remark}
+These types of errors have many names in many communities.
+See the Wikipedia entry on [ROC](https://en.wikipedia.org/wiki/Receiver_operating_characteristic) for a table of the (endless) possible error measures. 
+```
+
+
+
+### Signal Identification in R
+
+One (of many) ways to do signal identification with statistical guarantees involves the `stats::p.adjust` function.
+The function takes as inputs a $p$-vector of the variable-wise __p-values__. 
+Why do we start with variable-wise p-values, and not the full data set?
+
+a. Because we want to make inference variable-wise, so it is natural to start with variable-wise statistics. 
+a. Because we want to avoid dealing with covariances if possible. Computing variable-wise p-values does not require estimating covariances. 
+
+We start be generating some high-dimensional multivariate data and computing the coordinate-wise (i.e. hypothesis-wise) p-value.
+
+```{r}
+library(mvtnorm)
+n <- 1e1
+p <- 1e2
+mu <- rep(0,p)
+x <- rmvnorm(n = n, mean = mu)
+dim(x)
+lattice::levelplot(x)
+```
+
+We now compute the pvalues of each coordinate.
+We use a coordinate-wise t-test. 
+Why a t-test? Because for the purpose of demonstration we want a simple test. In reality, you may use any test that returns valid p-values. 
+
+```{r}
+t.pval <- function(y) t.test(y)$p.value
+p.values <- apply(X = x, MARGIN = 2, FUN = t.pval) 
+plot(p.values, type='h')
+```
+
+Things to note:
+
+- `t.pval` is a function that merely returns the p-value of a t.test.
+- We used the `apply` function to apply the same function to each column of `x`. 
+- `MARGIN=2` tells `apply` to compute over columns and not rows. 
+- The output, `p.values`, is a vector of 100 p-values. 
+
+We are now ready to do the identification, i.e., find which coordinate of $\mu$ is different than $\mu_0=0$.
+The workflow for identification has the same structure, regardless of the desired error guarantees: 
+
+1. Compute an `adjusted p-value`. 
+1. Compare the adjusted p-value to the desired error level.
+
+If we want $FWER \leq 0.05$, meaning that we allow a $5\%$ probability of making any mistake, we will use the `method="holm"` argument of `p.adjust`. 
+Recalling that our data currently has no signal we verify that, indeed, nothing is selected. 
+
+```{r holm}
+alpha <- 0.05
+p.values.holm <- p.adjust(p.values, method = 'holm' )
+which(p.values.holm < alpha)
+```
+
+If we want $FDR \leq 0.05$, meaning that we allow the proportion of false discoveries to be no larger than $5\%$, we use the `method="BH"` argument of `p.adjust`.
+Again, nothing is selected because there is nothing to select.
+
+```{r bh}
+alpha <- 0.05
+p.values.BH <- p.adjust(p.values, method = 'BH' )
+which(p.values.BH < alpha)
+```
+
+We now inject some strong signal in $\mu$ just to see that the process works.
+We will artificially inject signal in the first 10 coordinates.
+
+```{r}
+mu[1:10] <- 2 # inject signal in first 10 variables
+x <- rmvnorm(n = n, mean = mu) # generate data
+p.values <- apply(X = x, MARGIN = 2, FUN = t.pval) 
+p.values.BH <- p.adjust(p.values, method = 'BH' )
+which(p.values.BH < alpha)
+```
+
+Indeed- we are now able to detect that the first coordinates carry signal, because their respective coordinate-wise null hypotheses have been rejected. 
+
+
+## Signal Estimation (*)
+
+The estimation of the elements of $\mu$ is a seemingly straightforward task.
+This is not the case, however, if we estimate only the elements that were selected because they were significant (or any other data-dependent criterion).
+Clearly, estimating only significant entries will introduce a bias in the estimation. 
+In the statistical literature, this is known as _selection bias_.
+Selection bias also occurs when you perform inference on regression coefficients after some model selection, say, with a lasso, or a forward search^[You might find this shocking, but it does mean that you cannot trust the `summary` table of a model that was selected from a multitude of models.].
+
+Selective inference is a complicated and active research topic so we will not offer any off-the-shelf solution to the matter.
+The curious reader is invited to read @rosenblatt2014selective, @javanmard2014confidence, or [Will Fithian's](http://www.stat.berkeley.edu/~wfithian/) PhD thesis [@fithian2015topics] for more on the topic. 
+
+
+
+
+
+
+
+
+
+## Bibliographic Notes
+For a general introduction to multivariate data analysis see @anderson2004introduction.
+For an R oriented introduction, see @everitt2011introduction.
+For more on the difficulties with high dimensional problems, see @bai1996effect.
+For some cutting edge solutions for testing in high-dimension, see @rosenblatt2016better and references therein.
+Simes' test is not very well known. It is introduced in @simes1986improved, and proven to control the type I error of detection under a PRDS type of dependence in @benjamini2001control.
+For more on multiple testing, and signal identification, see @goeman2014multiple.
+For more on the choice of your error rate see @rosenblatt2013practitioner.
+
+
+
+## Practice Yourself
+
+1. Generate multivariate data with:
+    ```{r}
+set.seed(3)
+mu<-rexp(50,6)
+multi<-  rmvnorm(n = 100, mean = mu) 
+```
+    a. Use Hotelling's test to determine if $\mu$ equals $\mu_0=0$. Can you detect the signal? 
+    a. Perform t.test on each variable and extract the p-value. Try to identify visually the variables which depart from $\mu_0$.
+    a. Use `p.adjust` to identify in which variables there are any departures from $\mu_0=0$. Allow 5% probability of making any false identification.
+    a. Use `p.adjust` to identify in which variables there are any departures from $\mu_0=0$. Allow a 5% proportion of errors within identifications.
+
+1. Generate multivariate data from two groups: `rmvnorm(n = 100, mean = rep(0,10))` for the first, and `rmvnorm(n = 100, mean = rep(0.1,10))` for the second.
+    a. Do we agree the groups differ?
+    b. Implement the two-group Hotelling test described in Wikipedia: (https://en.wikipedia.org/wiki/Hotelling%27s_T-squared_distribution#Two-sample_statistic).
+    c. Verify that you are able to detect that the groups differ. 
+    d. Perform a two-group t-test on each coordinate. On which coordinates can you detect signal while controlling the FWER? On which while controlling the FDR? Use `p.adjust`.
+
+1. Return to the previous problem, but set `n=9`. Verify that you cannot compute your Hotelling statistic. 
